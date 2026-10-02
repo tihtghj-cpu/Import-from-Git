@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ইমেজ আপলোড ও গ্যালারি ড্যাশবোর্ড</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Hind Siliguri', 'Inter', 'sans-serif'] } } } }
+    </script>
+    <style>
+        .drag-over { border-color: #16a34a !important; background-color: rgba(220, 252, 231, 0.4) !important; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800 flex flex-col justify-between">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="max-w-5xl mx-auto px-4 py-8 w-full">
+        <header class="text-center mb-8">
+            <div class="inline-flex items-center justify-center p-3 bg-emerald-100 text-emerald-600 rounded-2xl mb-3 shadow-sm">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">ছবি আপলোড হাব</h1>
+            <p class="text-slate-600 max-w-xl mx-auto text-sm md:text-base">
+                ছবি আপলোড করুন এবং সরাসরি ছোট লিংক কপি করুন। লিংক সব ডিভাইসে কাজ করবে।
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 flex flex-col gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle text-emerald-600"></i> নতুন ছবি যোগ করুন
+                    </h2>
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-emerald-50/50 hover:border-emerald-400 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[220px]">
+                        <input type="file" id="file-input" accept="image/*" multiple class="hidden">
+                        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 text-xl shadow-inner">
+                            <i class="fa-solid fa-image"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-700 mb-1">ছবি ড্র্যাগ করে এখানে ছাড়ুন</p>
+                        <p class="text-xs text-slate-500 mb-4">অথবা ডিভাইস থেকে পছন্দ করুন</p>
+                        <button type="button" id="browse-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open"></i> ফাইল ব্রাউজ করুন
+                        </button>
+                    </div>
+                    <div class="mt-4 text-xs text-slate-500 space-y-1">
+                        <p><i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i> সমর্থিত ফাইল: JPG, PNG, GIF, WEBP</p>
+                        <p><i class="fa-solid fa-compress text-emerald-600 mr-1"></i> বড় ছবি আপনা-আপনি ছোট করে আপলোড হবে</p>
+                        <button id="logout-btn" class="text-slate-400 hover:text-slate-600 underline mt-1">পাসওয়ার্ড বদলান</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 flex flex-col gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[400px] flex flex-col">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-semibold text-slate-800">আপলোড করা ছবিসমূহ</h2>
+                            <span id="image-count" class="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+                        </div>
+                        <button id="clear-all-btn" class="text-xs text-red-500 hover:text-red-700 font-medium hidden items-center gap-1 hover:underline transition">
+                            <i class="fa-solid fa-trash-can"></i> সব মুছে ফেলুন
+                        </button>
+                    </div>
+
+                    <div id="upload-progress-container" class="hidden mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                            <span id="progress-status">আপলোড হচ্ছে...</span>
+                            <span id="progress-percentage">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div id="progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400">
+                        <i class="fa-regular fa-images text-5xl mb-3 text-slate-300"></i>
+                        <p id="empty-text" class="text-sm font-medium text-slate-600 mb-1">এখনো কোনো ছবি আপলোড করা হয়নি</p>
+                        <p class="text-xs">ছবি যোগ করতে আপলোড বক্সে ড্র্যাগ করুন বা সিলেক্ট করুন।</p>
+                    </div>
+
+                    <div id="gallery-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-12">
+        <div class="max-w-5xl mx-auto px-4"><p>Netlify • ছোট ও স্থায়ী ইমেজ লিংক</p></div>
+    </footer>
+
+    <div id="image-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="modal-title" class="font-semibold text-slate-800 text-sm truncate max-w-[80%]">ছবি প্রিভিউ</h3>
+                <button id="modal-close" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 flex items-center justify-center bg-slate-900/5">
+                <img id="modal-image" src="" alt="Preview" class="max-h-[60vh] object-contain rounded-lg shadow-md">
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-xs text-slate-600 gap-2">
+                <span id="modal-info"></span>
+                <div class="flex gap-2">
+                    <button id="modal-copy-btn" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 font-medium transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> লিংক
+                    </button>
+                    <a id="modal-download-btn" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> ডাউনলোড
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const dropZone = $('drop-zone'), fileInput = $('file-input'), gallery = $('gallery-container');
+        const emptyState = $('empty-state'), countEl = $('image-count'), clearBtn = $('clear-all-btn');
+        const progContainer = $('upload-progress-container'), progBar = $('progress-bar');
+        const progPct = $('progress-percentage'), progStatus = $('progress-status');
+
+        const MAX_UPLOAD = 4.5 * 1024 * 1024;   // এর বেশি হলে ছোট করা হবে
+        let items = [];
+        let adminKey = '';
+        try { adminKey = localStorage.getItem('adminKey') || ''; } catch (e) {}
+
+        /* ---------- Helpers ---------- */
+        const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fileUrl = (key) => `/uploads/${encodeURIComponent(key)}`;
+        const fullUrl = (key) => location.origin + fileUrl(key);
+
+        function formatBytes(bytes) {
+            if (!bytes) return '0 Bytes';
+            const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showToast(message, type = 'info') {
+            const t = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-slate-800';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            t.className = `${bg} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 pointer-events-auto opacity-0 translate-y-2`;
+            t.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHTML(message)}</span>`;
+            $('toast-container').appendChild(t);
+            setTimeout(() => t.classList.remove('opacity-0', 'translate-y-2'), 10);
+            setTimeout(() => { t.classList.add('opacity-0'); setTimeout(() => t.remove(), 300); }, 3500);
+        }
+
+        function askKey() {
+            const k = prompt('অ্যাডমিন পাসওয়ার্ড দিন:');
+            if (!k) return false;
+            adminKey = k;
+            try { localStorage.setItem('adminKey', k); } catch (e) {}
+            return true;
+        }
+
+        async function api(path, opts = {}) {
+            if (!adminKey && !askKey()) throw new Error('পাসওয়ার্ড দেওয়া হয়নি');
+            const res = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), 'x-admin-key': adminKey } });
+            if (res.status === 401) {
+                adminKey = '';
+                try { localStorage.removeItem('adminKey'); } catch (e) {}
+                showToast('পাসওয়ার্ড ভুল হয়েছে', 'error');
+                throw new Error('unauthorized');
+            }
+            return res;
+        }
+
+        function loadImage(blob) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => resolve({ img, url });
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('ছবি পড়া যায়নি')); };
+                img.src = url;
+            });
+        }
+
+        async function prepare(file) {
+            const { img, url } = await loadImage(file);
+            let blob = file, w = img.naturalWidth, h = img.naturalHeight;
+            if (file.size > MAX_UPLOAD && file.type !== 'image/gif') {
+                const scale = Math.min(1, 2400 / Math.max(w, h));
+                const cw = Math.round(w * scale), ch = Math.round(h * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = cw; canvas.height = ch;
+                canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+                blob = await new Promise(r => canvas.toBlob(r, 'image/webp', 0.85));
+                w = cw; h = ch;
+            }
+            URL.revokeObjectURL(url);
+            if (blob.size > 5.5 * 1024 * 1024) throw new Error('ছবি অনেক বড়, ছোট করা যায়নি');
+            return { blob, w, h };
+        }
+
+        function xhrUpload(blob, file, w, h, onProgress) {
+            return new Promise((resolve, reject) => {
+                const x = new XMLHttpRequest();
+                x.open('POST', '/api/images');
+                x.setRequestHeader('x-admin-key', adminKey);
+                x.setRequestHeader('content-type', blob.type);
+                x.setRequestHeader('x-file-name', encodeURIComponent(file.name));
+                x.setRequestHeader('x-width', String(w));
+                x.setRequestHeader('x-height', String(h));
+                x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+                x.onload = () => {
+                    let d = {};
+                    try { d = JSON.parse(x.responseText); } catch (e) {}
+                    if (x.status >= 200 && x.status < 300) resolve(d.item);
+                    else reject(Object.assign(new Error(d.error || 'আপলোড ব্যর্থ হয়েছে'), { status: x.status }));
+                };
+                x.onerror = () => reject(new Error('নেটওয়ার্ক সমস্যা'));
+                x.send(blob);
+            });
+        }
+
+        /* ---------- Load / Upload ---------- */
+        async function loadList() {
+            try {
+                const res = await api('/api/images');
+                const data = await res.json();
+                if (!res.ok) {
+                    $('empty-text').innerText = data.error || 'তালিকা লোড করা যায়নি';
+                    return;
+                }
+                items = data.items || [];
+                render();
+            } catch (e) {
+                if (e.message === 'unauthorized') return loadList();
+            }
+        }
+
+        async function handleFiles(fileList) {
+            const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (!files.length) { showToast('অনুগ্রহ করে শুধুমাত্র ইমেজ ফাইল সিলেক্ট করুন!', 'error'); return; }
+            if (!adminKey && !askKey()) return;
+
+            progContainer.classList.remove('hidden');
+            let ok = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                progStatus.innerText = `আপলোড হচ্ছে (${i + 1}/${files.length}): ${file.name}`;
+                const setPct = (frac) => {
+                    const p = Math.round(((i + frac) / files.length) * 100);
+                    progBar.style.width = p + '%';
+                    progPct.innerText = p + '%';
+                };
+                try {
+                    const { blob, w, h } = await prepare(file);
+                    const item = await xhrUpload(blob, file, w, h, setPct);
+                    items.unshift(item);
+                    ok++;
+                    render();
+                } catch (e) {
+                    if (e.status === 401) {
+                        adminKey = '';
+                        try { localStorage.removeItem('adminKey'); } catch (_) {}
+                        showToast('পাসওয়ার্ড ভুল হয়েছে', 'error');
+                        break;
+                    }
+                    showToast(`${file.name}: ${e.message}`, 'error');
+                }
+                setPct(1);
+            }
+            setTimeout(() => { progContainer.classList.add('hidden'); progBar.style.width = '0%'; progPct.innerText = '0%'; }, 400);
+            if (ok) showToast(`${ok}টি ছবি সফলভাবে আপলোড হয়েছে!`, 'success');
+            fileInput.value = '';
+        }
+
+        /* ---------- Render ---------- */
+        function render() {
+            countEl.innerText = items.length;
+            if (!items.length) {
+                emptyState.classList.remove('hidden');
+                gallery.innerHTML = '';
+                clearBtn.classList.add('hidden'); clearBtn.classList.remove('flex');
+                return;
+            }
+            emptyState.classList.add('hidden');
+            clearBtn.classList.remove('hidden'); clearBtn.classList.add('flex');
+
+            gallery.innerHTML = items.map(f => `
+                <div class="bg-slate-50 rounded-xl border border-slate-200 p-3 hover:shadow-md transition flex flex-col justify-between group">
+                    <div>
+                        <div class="relative aspect-video rounded-lg overflow-hidden bg-slate-200 mb-2 cursor-pointer" data-action="open" data-key="${escapeHTML(f.key)}">
+                            <img src="${fileUrl(f.key)}" alt="${escapeHTML(f.name || f.key)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            <div class="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <span class="bg-white/90 text-slate-800 text-xs px-2.5 py-1 rounded-full font-medium shadow-sm"><i class="fa-solid fa-expand mr-1"></i> জুম</span>
+                            </div>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-800 truncate" title="${escapeHTML(f.name || '')}">${escapeHTML(f.name || f.key)}</p>
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+                            <span>${formatBytes(f.size)}</span>
+                            <span>${f.width || 0} × ${f.height || 0}</span>
+                        </div>
+                        <p class="mt-2 text-[11px] bg-white border border-slate-200 rounded-md px-2 py-1 text-emerald-700 font-mono truncate" title="${escapeHTML(fullUrl(f.key))}">/uploads/${escapeHTML(f.key)}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 pt-2 border-t border-slate-200/60 mt-2">
+                        <button data-action="copy" data-key="${escapeHTML(f.key)}" class="flex-1 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[11px] font-medium rounded-lg transition flex items-center justify-center gap-1 shadow-sm">
+                            <i class="fa-regular fa-copy"></i> লিংক কপি
+                        </button>
+                        <button data-action="delete" data-key="${escapeHTML(f.key)}" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="মুছে ফেলুন">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* ---------- Actions ---------- */
+        async function copyLink(key) {
+            const link = fullUrl(key);
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(link);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = link; document.body.appendChild(ta); ta.select();
+                    document.execCommand('copy'); ta.remove();
+                }
+                showToast('লিংক কপি হয়েছে!', 'success');
+            } catch (e) { showToast('কপি করতে সমস্যা হয়েছে!', 'error'); }
+        }
+
+        async function deleteImage(key, silent) {
+            try {
+                const res = await api('/api/images/' + encodeURIComponent(key), { method: 'DELETE' });
+                if (!res.ok) throw new Error();
+                items = items.filter(i => i.key !== key);
+                if (!silent) { render(); showToast('ছবি মুছে ফেলা হয়েছে', 'info'); }
+                return true;
+            } catch (e) { showToast('মুছতে সমস্যা হয়েছে', 'error'); return false; }
+        }
+
+        gallery.addEventListener('click', (e) => {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+            const key = el.dataset.key;
+            if (el.dataset.action === 'open') openModal(key);
+            if (el.dataset.action === 'copy') copyLink(key);
+            if (el.dataset.action === 'delete') { if (confirm('ছবিটি মুছে ফেলবেন? এই লিংক আর কাজ করবে না।')) deleteImage(key); }
+        });
+
+        clearBtn.addEventListener('click', async () => {
+            if (!confirm('সব ছবি মুছে ফেলবেন? সব লিংক বন্ধ হয়ে যাবে।')) return;
+            for (const it of [...items]) { if (!(await deleteImage(it.key, true))) break; }
+            render();
+            showToast('মুছে ফেলা সম্পন্ন', 'info');
+        });
+
+        function openModal(key) {
+            const it = items.find(i => i.key === key);
+            if (!it) return;
+            $('modal-title').innerText = it.name || it.key;
+            $('modal-image').src = fileUrl(key);
+            $('modal-info').innerText = `${formatBytes(it.size)} • ${it.width || 0} × ${it.height || 0}`;
+            const dl = $('modal-download-btn');
+            dl.href = fileUrl(key); dl.download = it.key;
+            $('modal-copy-btn').onclick = () => copyLink(key);
+            $('image-modal').classList.remove('hidden');
+        }
+        const closeModal = () => $('image-modal').classList.add('hidden');
+        $('modal-close').addEventListener('click', closeModal);
+        $('image-modal').addEventListener('click', (e) => { if (e.target.id === 'image-modal') closeModal(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+        $('logout-btn').addEventListener('click', () => { if (askKey()) loadList(); });
+
+        /* ---------- Drag & drop / browse ---------- */
+        ['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+        ['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+        dropZone.addEventListener('click', (e) => { if (!e.target.closest('#browse-btn')) fileInput.click(); });
+        $('browse-btn').addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+        fileInput.addEventListener('click', (e) => e.stopPropagation());
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        loadList();
+    </script>
+</body>
+</html>
